@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #282c34;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+            color: white;
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        #modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #login-form,
+        #signup-form {
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+        }
+
+        #login-form label,
+        #signup-form label {
+            margin-bottom: 5px;
+        }
+
+        #modal-close {
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        #game-container {
+            display: grid;
+            background-color: azure;
+            grid-template-columns: repeat(6, 50px);
+            gap: 5px;
+        }
+
+        .block {
+            width: 50px;
+            height: 50px;
+            background-color: rgb(60, 10, 10);
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        #score-container {
+            color: azure;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .clicked {
+            animation: clickAnimation 1s ease;
+        }
+
+        @keyframes clickAnimation {
+            0% {
+                background-color: initial;
+            }
+            50% {
+                background-color: #ffcc00;
+            }
+            100% {
+                background-color: initial;
+            }
+        }
+
+        .revealed {
+            background-color: blue;
+        }
+    </style>
+    <title>Minesweeper Cricket</title>
+</head>
+
+<body>
+
+    <div id="modal">
+        <div id="modal-content">
+            <span id="modal-close">&times;</span>
+            <div id="login-form">
+                <label for="username">Username:</label>
+                <input type="text" id="username" required>
+                <label for="password">Password:</label>
+                <input type="password" id="password" required>
+                <button onclick="login()">Login</button>
+            </div>
+            <div id="signup-form">
+                <label for="new-username">New Username:</label>
+                <input type="text" id="new-username" required>
+                <label for="new-password">New Password:</label>
+                <input type="password" id="new-password" required>
+                <button onclick="signup()">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-container"></div>
+    <div id="score-container">Score: <span id="score">0</span></div>
+    <div id="high-score-container">Highest Score: <span id="high-score">0</span></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'flex';
+
+            const modalClose = document.getElementById('modal-close');
+            modalClose.addEventListener('click', function () {
+                modal.style.display = 'none';
+                initializeGame();
+            });
+        });
+
+        function login() {
+            const usernameInput = document.getElementById('username').value;
+            const passwordInput = document.getElementById('password').value;
+
+            if (usernameInput && passwordInput) {
+                document.getElementById('modal').style.display = 'none';
+                initializeGame(usernameInput);
+            } else {
+                alert('Invalid credentials. Please try again.');
+            }
+        }
+
+        function signup() {
+            const newUsernameInput = document.getElementById('new-username').value;
+            const newPasswordInput = document.getElementById('new-password').value;
+
+            if (newUsernameInput && newPasswordInput) {
+                document.getElementById('modal').style.display = 'none';
+                initializeGame(newUsernameInput);
+            } else {
+                alert('Invalid credentials. Please try again.');
+            }
+        }
+
+        const gridSize = 6;
+        const fielderCount = 11;
+
+        const gameContainer = document.getElementById('game-container');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('high-score');
+
+        let score = 0;
+        let fielders = [];
+        let highestScore = 0;
+
+        function initializeGame(username) {
+            initializeGrid();
+            generateFielders();
+            loadHighScore(username);
+        }
+
+        function initializeGrid() {
+            for (let i = 0; i < gridSize * gridSize; i++) {
+                const block = document.createElement('div');
+                block.classList.add('block');
+                block.addEventListener('click', onBlockClick);
+                gameContainer.appendChild(block);
+            }
+        }
+
+        function generateFielders() {
+            const availableBlocks = Array.from(gameContainer.children);
+            for (let i = 0; i < fielderCount; i++) {
+                const randomIndex = Math.floor(Math.random() * availableBlocks.length);
+                const fielderBlock = availableBlocks.splice(randomIndex, 1)[0];
+                fielderBlock.classList.add('fielder');
+                fielders.push(fielderBlock);
+            }
+        }
+
+        function animateClick(element) {
+            if (!element.classList.contains('clicked')) {
+                element.classList.add('clicked');
+                element.style.backgroundColor = 'white'; // Change background color to white
+                setTimeout(() => {
+                    element.classList.remove('clicked');
+                }, 1000);
+            }
+        }
+
+        function onBlockClick(event) {
+            const clickedBlock = event.target;
+            if (clickedBlock.classList.contains('fielder')) {
+                endGame();
+            } else {
+                animateClick(clickedBlock);
+                score++;
+                scoreElement.textContent = score;
+                updateHighScore();
+            }
+        }
+
+        function endGame() {
+            const restartGame = confirm(`Game Over! Your final score is ${score}. Do you want to restart the game?`);
+            if (restartGame) {
+                resetGame();
+                revealFielders();
+                setTimeout(resetGame, 1000);
+            }
+        }
+
+        function resetGame() {
+            score = 0;
+            scoreElement.textContent = score;
+            fielders.forEach(fielder => fielder.classList.remove('fielder', 'revealed'));
+            fielders = [];
+
+            // Reset background color and remove 'clicked' class from all blocks
+            const allBlocks = document.querySelectorAll('.block');
+            allBlocks.forEach(block => {
+                block.style.backgroundColor = 'rgb(60, 10, 10)';
+                block.classList.remove('clicked');
+            });
+
+            generateFielders();
+            updateHighScore();
+        }
+
+        function revealFielders() {
+            fielders.forEach(fielder => {
+                fielder.classList.remove('fielder');
+                fielder.classList.add('revealed');
+            });
+        }
+
+        function loadHighScore(username) {
+            const storedHighScore = localStorage.getItem(username + '-high-score');
+            if (storedHighScore) {
+                highestScore = parseInt(storedHighScore, 10);
+                highScoreElement.textContent = highestScore;
+            }
+        }
+
+        function updateHighScore() {
+            if (score > highestScore) {
+                highestScore = score;
+                highScoreElement.textContent = highestScore;
+                const username = document.getElementById('username').value;
+                if (username) {
+                    localStorage.setItem(username + '-high-score', highestScore);
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
